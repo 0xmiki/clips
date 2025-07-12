@@ -1,4 +1,4 @@
-# 🖼️ Running **Clips** on NixOS
+# Running **Clips** on NixOS
 
 This guide helps you get the **Clips** video clipping app working smoothly on NixOS — including properly bundling `yt-dlp` for use inside an AppImage.
 
@@ -81,6 +81,9 @@ Depending on your display server, you may need to set environment variables:
   ```
 
 - **X11**:
+
   ```sh
   export WEBKIT_DISABLE_COMPOSITING_MODE=1
   ```
+
+- TODO: Make the `default.nix` fetch the repo instead of requiring `git clone`

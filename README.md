@@ -1,4 +1,4 @@
-![Demo Image](./images/demo-image.png)
+![Demo Image](./images/image-small.png)
 
 ## 🎬 What is Clips?
 
@@ -71,3 +71,8 @@ yt-dlp https://www.youtube.com/watch?v=dQw4w9WgXcQ
 ```
 
 This creates the necessary cache file by downloading a video and ensures `yt-dlp` runs smoothly afterward.
+
+---
+
+![Demo Image](./images/demo-image.png)
+![Demo Image](./images/image-small-demo.png)
