@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Clips",
+  "version": "0.1.0",
+  "identifier": "com.clips.app",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../build"
+  },
+
+  "app": {
+    "windows": [
+      {
+        "title": "Clips"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' https://i.ytimg.com data:; media-src https://*.googlevideo.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://release-youtubei.sandbox.googleapis.com https://generativelanguage.googleapis.com;"
+    }
+  },
+  "bundle": {
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true,
+        "files": {}
+      },
+      "deb": {
+        "files": {}
+      },
+      "rpm": {
+        "epoch": 0,
+        "files": {},
+        "release": "1"
+      }
+    },
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

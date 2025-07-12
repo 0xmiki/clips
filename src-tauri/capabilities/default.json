@@ -1,0 +1,36 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "core:webview:allow-create-webview",
+    "clipboard-manager:allow-read-text",
+    "dialog:default",
+    "opener:default",
+    "dialog:default",
+    "shell:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "ffmpeg",
+          "cmd": "ffmpeg",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "yt-dlp",
+          "cmd": "yt-dlp",
+          "args": true,
+          "sidecar": false
+        }
+      ]
+    },
+    "shell:allow-open",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}
