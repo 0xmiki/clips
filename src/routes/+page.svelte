@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { readText } from '@tauri-apps/plugin-clipboard-manager';
+    import { confirm } from '@tauri-apps/plugin-dialog';
     import VideoPlayer from "$lib/components/VideoPlayer.svelte";
     import HistoryModal from "$lib/components/HistoryModal.svelte";
     import SettingsModal from "$lib/components/SettingsModal.svelte";
@@ -37,7 +38,8 @@
   
     // Settings state
     let showSettingsModal = $state(false);
-    let apiKey = $state(localStorage.getItem('gemini_api_key') || "");
+    let GEMINI_API_KEY = $state(localStorage.getItem('gemini_api_key') || "");
+    const genAI = $derived(new GoogleGenAI({ apiKey: GEMINI_API_KEY ?? "" }));
     let downloadDir = $state(localStorage.getItem('download_directory') || "~/Downloads");
     let model = $state(localStorage.getItem('gemini_model') || "gemini-2.0-flash");
     let selectedFormat = $state<Format | null>(null);
@@ -61,11 +63,10 @@
 
     // Save settings to localStorage
     function saveSettings() {
-        localStorage.setItem('gemini_api_key', apiKey);
+        localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
         localStorage.setItem('download_directory', downloadDir);
         localStorage.setItem('gemini_model', model);
         localStorage.setItem('show_bg_image', String(showBgImage));
-        GEMINI_API_KEY = apiKey;
         showSettingsModal = false;
     }
 
@@ -83,9 +84,6 @@
     let streamingUrl = $state('');
     let urlInput = $state('');
     let copied = $state(false);
-
-    let GEMINI_API_KEY = $state(localStorage.getItem('gemini_api_key'));
-    const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY ?? "" });
 
     let promptInput = $state("");
     let generatedClips = $state<any[]>([]);
@@ -407,6 +405,21 @@
 
     async function generateClips() {
         if (!video) return;
+
+
+        if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+            const confirmation = await confirm(
+                'Please set your Gemini API key in settings to generate clips.',
+                { title: 'API Key Required', kind: 'warning' }
+            );
+            const result = await confirmation
+
+            // if (result === "Open Settings") {
+            //     showSettingsModal = true;
+            // }
+            return;
+        }
+        
         generating = true;
         try {
             const transcript = video.transcript ?? "";
@@ -611,6 +624,21 @@
 
     async function generateCustomClip(startTime: string, endTime: string, customPrompt: string = "", findMode: boolean = false) {
         if (!video) return;
+        
+        // Check if API key is set
+        if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+            const confirmation = await confirm(
+                'Please set your Gemini API key in settings to generate clips.',
+                { title: 'API Key Required', kind: 'warning' }
+            );
+            const result = await confirmation
+
+            // if (result === "Open Settings") {
+            //     showSettingsModal = true;
+            // }
+            return;
+        }
+        
         try {
             const transcript = video.transcript ?? "";
             if (!transcript) {
@@ -728,11 +756,10 @@
         const savedDownloadDir = localStorage.getItem('download_directory');
         const savedModel = localStorage.getItem('gemini_model');
         const savedShowBgImage = localStorage.getItem('show_bg_image');
-        if (savedApiKey) apiKey = savedApiKey;
+        if (savedApiKey) GEMINI_API_KEY = savedApiKey;
         if (savedDownloadDir) downloadDir = savedDownloadDir;
         if (savedModel) model = savedModel;
         if (savedShowBgImage !== null) showBgImage = savedShowBgImage === 'true';
-        GEMINI_API_KEY = savedApiKey || GEMINI_API_KEY;
     });
 
 </script>
@@ -1064,13 +1091,13 @@
 <!-- Settings Modal -->
 <SettingsModal 
     show={showSettingsModal}
-    apiKey={apiKey}
+    apiKey={GEMINI_API_KEY}
     downloadDir={downloadDir}
     model={model}
     showBgImage={showBgImage}
     onClose={() => (showSettingsModal = false)}
     onSave={saveSettings}
-    onApiKeyChange={(value) => (apiKey = value)}
+    onApiKeyChange={(value) => (GEMINI_API_KEY = value)}
     onDownloadDirChange={(value) => (downloadDir = value)}
     onModelChange={(value) => (model = value)}
     onShowBgImageChange={(value) => (showBgImage = value)}
