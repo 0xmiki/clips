@@ -60,19 +60,5 @@ sudo apt install gstreamer1.0-libav gstreamer1.0-plugins-good \
 
 ---
 
-## 🛠️ First-Time Use Fix for yt-dlp
-
-If you're using `yt-dlp` for the first time and get a `403 Forbidden` error when generating clips, it's likely due to a missing cache.
-
-**Fix it with one simple command:**
-
-```sh
-yt-dlp https://www.youtube.com/watch?v=dQw4w9WgXcQ
-```
-
-This creates the necessary cache file by downloading a video and ensures `yt-dlp` runs smoothly afterward.
-
----
-
 ![Demo Image](./images/demo-image.png)
 ![Demo Image](./images/image-small-demo.png)

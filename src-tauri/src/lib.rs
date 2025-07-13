@@ -42,22 +42,39 @@ pub struct StreamingUrl {
 #[tauri::command]
 async fn extract_video_metadata(_app: tauri::AppHandle, url: String) -> Result<Video, String> {
     let mut cmd = Command::new("yt-dlp");
-    cmd.arg("-j").arg(&url);
+    cmd.arg("-j")
+        .arg("--no-check-certificates")
+        .arg("--no-warnings")
+        .arg(&url);
     #[cfg(windows)]
     {
         cmd.creation_flags(0x08000000); 
     }
+    
+    // Use stderr to capture progress and errors, but don't fail on warnings
     let output = cmd
-        .output()
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            let error_msg = format!("Failed to run yt-dlp: {e}");
+            error_msg
+        })?;
+
+    let output = output
+        .wait_with_output()
         .await
         .map_err(|e| {
             let error_msg = format!("Failed to run yt-dlp: {e}");
             error_msg
         })?;
 
-    if !output.status.success() {
+    // Check if we got valid JSON output, regardless of exit status
+    // yt-dlp might exit with non-zero status but still provide valid metadata
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    if stdout_str.trim().is_empty() {
         let error_msg = format!(
-            "yt-dlp failed: {}",
+            "yt-dlp failed to extract metadata: {}",
             String::from_utf8_lossy(&output.stderr)
         );
         return Err(error_msg);
@@ -123,6 +140,8 @@ async fn fetch_transcript_backend(_app: tauri::AppHandle, video_id: String) -> R
         .arg(lang)
         .arg("--sub-format")
         .arg("srv1")
+        .arg("--no-check-certificates")
+        .arg("--no-warnings")
         .arg("-o")
         .arg("%(id)s.%(ext)s")
         .arg(&format!("https://www.youtube.com/watch?v={}", video_id));
@@ -130,26 +149,28 @@ async fn fetch_transcript_backend(_app: tauri::AppHandle, video_id: String) -> R
     {
         cmd.creation_flags(0x08000000);
     }
+    
+    // Use stderr to capture progress and errors, but don't fail on warnings
     let output = cmd
-        .output()
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            let error_msg = format!("Failed to run yt-dlp: {e}");
+            error_msg
+        })?;
+
+    let output = output
+        .wait_with_output()
         .await
         .map_err(|e| {
             let error_msg = format!("Failed to run yt-dlp: {e}");
             error_msg
         })?;
 
-    if !output.status.success() {
-        let error_msg = format!(
-            "yt-dlp failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return Err(error_msg);
-    }
-
-
+    // Check if transcript file was created, regardless of exit status
     let fname = format!("{}.en.srv1", video_id);
     if let Ok(txt) = std::fs::read_to_string(&fname) {
-
         let _ = std::fs::remove_file(&fname);
 
         let mut lines = Vec::new();
@@ -171,7 +192,11 @@ async fn fetch_transcript_backend(_app: tauri::AppHandle, video_id: String) -> R
         }
         Ok(lines.join("\n"))
     } else {
-        let error_msg = "Could not read transcript file".to_string();
+        // If no transcript file was created, then it's a real error
+        let error_msg = format!(
+            "Could not read transcript file. yt-dlp output: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         return Err(error_msg);
     }
 }
@@ -183,30 +208,39 @@ async fn get_streaming_url(_app: tauri::AppHandle, video_url: String) -> Result<
     cmd.arg("-f")
         .arg("best[height<=720]") 
         .arg("-g")
+        .arg("--no-check-certificates")
+        .arg("--no-warnings")
         .arg(&video_url);
     #[cfg(windows)]
     {
         cmd.creation_flags(0x08000000); 
     }
+    
+    // Use stderr to capture progress and errors, but don't fail on warnings
     let output = cmd
-        .output()
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            let error_msg = format!("Failed to run yt-dlp: {e}");
+            error_msg
+        })?;
+
+    let output = output
+        .wait_with_output()
         .await
         .map_err(|e| {
             let error_msg = format!("Failed to run yt-dlp: {e}");
             error_msg
         })?;
 
-    if !output.status.success() {
-        let error_msg = format!(
-            "yt-dlp failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return Err(error_msg);
-    }
-
+    // Check if we got a streaming URL, regardless of exit status
     let streaming_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if streaming_url.is_empty() {
-        let error_msg = "No streaming URL found".to_string();
+        let error_msg = format!(
+            "No streaming URL found. yt-dlp output: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         return Err(error_msg);
     }
 
@@ -390,19 +424,8 @@ async fn download_video_internal(
             let error_msg = format!("Failed to run yt-dlp: {e}");
             error_msg
         })?;
-    if !output.status.success() {
-        let _ = std::fs::remove_dir_all(&temp_dir);
-        let _function_name = match &download_type {
-            DownloadType::Clip { .. } => "download_clip",
-            DownloadType::Full => "download_full_video",
-        };
-        let error_msg = format!(
-            "yt-dlp failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        app.emit("download_progress", serde_json::json!({"status": "error", "error": String::from_utf8_lossy(&output.stderr)})).ok();
-        return Err(error_msg);
-    }
+    
+    // Check if a file was actually downloaded, regardless of exit status
     let temp_file = std::fs::read_dir(&temp_dir)
         .map_err(|e| {
             let _function_name = match &download_type {
@@ -413,15 +436,23 @@ async fn download_video_internal(
             error_msg
         })?
         .filter_map(Result::ok)
-        .find(|entry| entry.file_name().to_string_lossy().starts_with("temp."))
-        .ok_or_else(|| {
-            let _function_name = match &download_type {
-                DownloadType::Clip { .. } => "download_clip",
-                DownloadType::Full => "download_full_video",
-            };
-            let error_msg = "Could not find downloaded file".to_string();
-            error_msg
-        })?;
+        .find(|entry| entry.file_name().to_string_lossy().starts_with("temp."));
+    
+    if temp_file.is_none() {
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _function_name = match &download_type {
+            DownloadType::Clip { .. } => "download_clip",
+            DownloadType::Full => "download_full_video",
+        };
+        let error_msg = format!(
+            "yt-dlp failed to download file: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        app.emit("download_progress", serde_json::json!({"status": "error", "error": String::from_utf8_lossy(&output.stderr)})).ok();
+        return Err(error_msg);
+    }
+    
+    let temp_file = temp_file.unwrap();
     app.emit(
         "download_progress",
         serde_json::json!({"status": "processing"}),
