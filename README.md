@@ -60,5 +60,6 @@ sudo apt install gstreamer1.0-libav gstreamer1.0-plugins-good \
 
 ---
 
-![Demo Image](./images/demo-image.png)
+## ![Demo Image](./images/demo-image.png)
+
 ![Demo Image](./images/image-small-demo.png)
