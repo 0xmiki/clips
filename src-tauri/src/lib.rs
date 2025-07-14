@@ -459,14 +459,42 @@ async fn download_video_internal(
     )
     .ok();
     let mut ffmpeg_cmd = Command::new("ffmpeg");
-    ffmpeg_cmd.arg("-i")
+    // Doesn't work on ios
+    // ffmpeg_cmd.arg("-i")
+    //     .arg(temp_file.path().to_str().unwrap())
+    //     .arg("-c")
+    //     .arg("copy")
+    //     .arg("-movflags")
+    //     .arg("+faststart")
+    //     .arg("-y")
+    //     .arg(&final_path);
+    ffmpeg_cmd
+        .arg("-i")
         .arg(temp_file.path().to_str().unwrap())
-        .arg("-c")
-        .arg("copy")
+        // --- Video ---
+        .arg("-c:v")
+        .arg("libx264") // force H.264
+        .arg("-profile:v")
+        .arg("baseline") // safest profile for every iPhone/iPad
+        .arg("-level")
+        .arg("4.0") // high enough for 1080 p25, low enough for older devices
+        .arg("-preset")
+        .arg("fast") // speed vs. size trade-off (use "medium" if you want smaller files)
+        .arg("-crf")
+        .arg("23") // Constant-quality 0-51 (lower = bigger). 18-23 is visually fine.
+        // --- Audio ---
+        .arg("-c:a")
+        .arg("aac") // iOS always supports AAC
+        .arg("-b:a")
+        .arg("128k") // stereo 128 kb/s
+        .arg("-ac")
+        .arg("2") // force 2 channels
+        // --- Container tweaks ---
         .arg("-movflags")
-        .arg("+faststart")
-        .arg("-y")
+        .arg("+faststart") // moov atom at the front → quick start in Safari
+        .arg("-y") // overwrite existing file
         .arg(&final_path);
+        
     #[cfg(windows)]
     {
         ffmpeg_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
